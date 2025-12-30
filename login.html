@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel de Administración</title>
+<title>Iniciar Sesión</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,127 +11,93 @@ body{
   font-family:Segoe UI,Arial;
   background:#000;
   color:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-header{
-  padding:20px;
+.login{
   background:#111;
-  text-align:center;
-  border-bottom:1px solid #222;
-}
-.container{
-  padding:20px;
-}
-.card{
-  border:2px solid #2563eb;
+  padding:30px;
   border-radius:16px;
-  padding:15px;
-  margin-bottom:15px;
+  width:320px;
 }
-h2,h3{margin-top:0}
-table{
+input,button{
   width:100%;
-  border-collapse:collapse;
-}
-th,td{
-  padding:8px;
-  border-bottom:1px solid #222;
-  text-align:left;
-}
-th{color:#60a5fa}
-button{
-  padding:12px;
-  width:100%;
-  background:#2563eb;
-  border:none;
+  padding:14px;
+  margin-bottom:10px;
+  border-radius:10px;
+  border:1px solid #333;
+  background:#000;
   color:#fff;
   font-size:16px;
-  border-radius:10px;
-  cursor:pointer;
 }
-.logout{
-  background:#dc2626;
+button{
+  background:#2563eb;
+  border:none;
+}
+.error{
+  color:#f87171;
+  text-align:center;
+  display:none;
 }
 </style>
 </head>
 
 <body>
 
-<script>
-/* ===== VALIDAR SESIÓN ===== */
-if(localStorage.getItem("sesion")!=="activa"){
-  location.href="login.html";
-}
+<div class="login">
+  <h2>🔐 Iniciar sesión</h2>
 
-const usuario = localStorage.getItem("usuarioActual");
+  <input id="correo" type="email" placeholder="Correo electrónico">
+  <input id="pass" type="password" placeholder="Contraseña">
 
-/* ===== SOLO ADMIN ===== */
-const ADMIN_EMAIL = "admihtml@gmail.com";
+  <div class="error" id="error"></div>
 
-if(usuario !== ADMIN_EMAIL){
-  alert("Acceso denegado. Solo el administrador puede entrar.");
-  location.href="index.html";
-}
-</script>
-
-<header>
-  <h1>🛠 Panel de Administración</h1>
-  <p>Administrador: <b id="adminCorreo"></b></p>
-</header>
-
-<div class="container">
-
-  <div class="card">
-    <h2>👥 Usuarios registrados</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Correo</th>
-        </tr>
-      </thead>
-      <tbody id="listaUsuarios"></tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2>📊 Resumen de ventas por usuario</h2>
-    <div id="ventasUsuarios"></div>
-  </div>
-
-  <button class="logout" onclick="cerrarSesion()">🔒 Cerrar sesión</button>
-
+  <button onclick="entrar()">Entrar</button>
 </div>
 
 <script>
-document.getElementById("adminCorreo").innerText = usuario;
+function correoValido(correo){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+}
 
-/* ===== USUARIOS ===== */
-const usuarios = JSON.parse(localStorage.getItem("usuarios")) || {};
-const lista = document.getElementById("listaUsuarios");
-const ventasDiv = document.getElementById("ventasUsuarios");
+function entrar(){
+  const correo = document.getElementById("correo").value.trim().toLowerCase();
+  const pass = document.getElementById("pass").value;
+  const error = document.getElementById("error");
 
-Object.keys(usuarios).forEach(correo=>{
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${correo}</td>`;
-  lista.appendChild(tr);
+  error.style.display="none";
 
-  // Ventas por usuario
-  const ventas = JSON.parse(localStorage.getItem("ventasHoy_"+correo)) || [];
-  let total = 0;
-  ventas.forEach(v=> total += v.total);
+  if(!correoValido(correo)){
+    error.innerText="Correo no válido";
+    error.style.display="block";
+    return;
+  }
 
-  const div = document.createElement("div");
-  div.style.marginBottom="10px";
-  div.innerHTML = `
-    <b>${correo}</b><br>
-    Total vendido: $${total.toFixed(2)}
-  `;
-  ventasDiv.appendChild(div);
-});
+  if(pass.length < 4){
+    error.innerText="Contraseña no válida";
+    error.style.display="block";
+    return;
+  }
 
-function cerrarSesion(){
-  localStorage.removeItem("sesion");
-  localStorage.removeItem("usuarioActual");
-  location.href="login.html";
+  const usuarios = JSON.parse(localStorage.getItem("usuarios")) || {};
+
+  if(!usuarios[correo]){
+    usuarios[correo] = { password: pass };
+    localStorage.setItem("usuarios", JSON.stringify(usuarios));
+  }
+
+  if(usuarios[correo].password !== pass){
+    error.innerText="Contraseña incorrecta";
+    error.style.display="block";
+    return;
+  }
+
+  localStorage.setItem("sesion","activa");
+  localStorage.setItem("usuarioActual",correo);
+
+  location.href="index.html";
 }
 </script>
 
