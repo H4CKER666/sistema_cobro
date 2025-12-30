@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Corte del Día</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI,Arial;
+  background:#000;
+  color:#fff;
+  padding:20px
+}
+h1{text-align:center}
+
+.box{
+  border:2px solid #2563eb;
+  border-radius:18px;
+  padding:15px;
+  margin-bottom:15px;
+  text-align:center
+}
+.amount{
+  font-size:36px;
+  font-weight:bold;
+  color:#3b82f6
+}
+
+button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  font-size:16px
+}
+.red{background:#e53935}
+.gray{background:#333}
+
+.detalle{
+  background:#111;
+  padding:10px;
+  border-radius:10px;
+  margin-top:10px;
+  font-size:14px
+}
+.detalle div{
+  border-bottom:1px solid #222;
+  padding:4px 0
+}
+</style>
+</head>
+
+<body>
+
+<script>
+/* ===== VALIDAR SESIÓN ===== */
+if(localStorage.getItem("sesion")!=="activa"){
+  location.href="login.html";
+}
+const usuario = localStorage.getItem("usuarioActual");
+if(!usuario) location.href="login.html";
+
+function key(nombre){
+  return nombre+"_"+usuario;
+}
+</script>
+
+<h1>📊 Corte del Día</h1>
+
+<div class="box">
+  <div>Total vendido hoy</div>
+  <div class="amount">$<span id="totalHoy">0.00</span></div>
+</div>
+
+<div class="box">
+  <div>Ventas realizadas</div>
+  <div class="amount"><span id="cantidadHoy">0</span></div>
+</div>
+
+<button onclick="guardarCorte()">💾 Cerrar y guardar corte</button>
+<button class="gray" onclick="verHistorial()">📁 Ver historial de ventas</button>
+<button class="red" onclick="volver()">⬅ Volver</button>
+
+<div id="historial"></div>
+
+<script>
+/* ===== DATOS ===== */
+const ventasHoy = JSON.parse(localStorage.getItem(key("ventasHoy"))) || [];
+const historial = JSON.parse(localStorage.getItem(key("historialCortes"))) || [];
+
+/* ===== MOSTRAR HOY ===== */
+let total = 0;
+ventasHoy.forEach(v => total += v.total);
+
+document.getElementById("totalHoy").innerText = total.toFixed(2);
+document.getElementById("cantidadHoy").innerText = ventasHoy.length;
+
+/* ===== GUARDAR CORTE ===== */
+function guardarCorte(){
+  if(!ventasHoy.length){
+    alert("No hay ventas para guardar");
+    return;
+  }
+
+  historial.unshift({
+    fecha: new Date().toLocaleDateString(),
+    total: total,
+    ventas: ventasHoy
+  });
+
+  // 👉 SOLO ÚLTIMOS 5 DÍAS
+  if(historial.length > 5) historial.length = 5;
+
+  localStorage.setItem(key("historialCortes"), JSON.stringify(historial));
+  localStorage.removeItem(key("ventasHoy"));
+
+  alert("Corte guardado correctamente");
+  location.reload();
+}
+
+/* ===== VER HISTORIAL ===== */
+function verHistorial(){
+  const cont = document.getElementById("historial");
+  cont.innerHTML = "";
+
+  if(!historial.length){
+    cont.innerHTML = "<p>No hay historial guardado</p>";
+    return;
+  }
+
+  historial.forEach((corte, i) => {
+    const box = document.createElement("div");
+    box.className = "box";
+
+    let html = `
+      <strong>📅 ${corte.fecha}</strong><br>
+      Total: $${corte.total.toFixed(2)}
+    `;
+
+    corte.ventas.forEach(v => {
+      html += `<div class="detalle">`;
+      v.detalle.forEach(d => {
+        html += `<div>${d.producto} x${d.cantidad} = $${d.total}</div>`;
+      });
+      html += `</div>`;
+    });
+
+    box.innerHTML = html;
+    cont.appendChild(box);
+  });
+}
+
+/* ===== VOLVER ===== */
+function volver(){
+  location.href="index.html";
+}
+</script>
+
+</body>
+</html>

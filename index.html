@@ -1,11 +1,314 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Sistema de cobro</title>
+<meta charset="UTF-8">
+<title>Sistema de Cobro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial;background:#000;color:#fff}
+.app{display:flex;height:100vh}
+.lado-a{width:60%;padding:20px;border-right:1px solid #222}
+.lado-b{width:40%;padding:20px}
+
+input,button{
+  width:100%;
+  padding:14px;
+  margin-bottom:10px;
+  border-radius:10px;
+  border:1px solid #333;
+  background:#000;
+  color:#fff;
+  font-size:16px;
+}
+
+table{width:100%;border-collapse:collapse}
+th{background:#111;color:#aaa;padding:8px}
+td{padding:8px;border-bottom:1px solid #222;text-align:center}
+
+.box{
+  border:2px solid #16a34a;
+  border-radius:18px;
+  padding:15px;
+  text-align:center;
+  margin-bottom:10px;
+}
+.amount{font-size:40px;font-weight:bold;color:#16a34a}
+.cambio{border-color:#2563eb}
+.cambio .amount{color:#3b82f6}
+
+.btn-ws{background:#25D366;color:#000;font-weight:bold}
+.btn-mini{width:auto;padding:4px 8px;margin:0 2px}
+
+.producto-img{
+  border:2px solid #2563eb;
+  border-radius:18px;
+  height:260px;
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.producto-img img{max-width:90%;max-height:90%}
+
+.modal-bg{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.modal{
+  background:#111;
+  padding:20px;
+  border-radius:16px;
+  width:320px;
+}
+</style>
 </head>
+
 <body>
-  <h1>Sistema de cobro</h1>
-  <p>Repositorio inicial creado correctamente.</p>
+
+<script>
+/* ===== SESIÓN ===== */
+if(localStorage.getItem("sesion")!=="activa") location.href="login.html";
+const usuario = localStorage.getItem("usuarioActual");
+if(!usuario) location.href="login.html";
+function key(n){ return n+"_"+usuario; }
+</script>
+
+<!-- MODAL WHATS -->
+<div class="modal-bg" id="modalWs">
+  <div class="modal">
+    <h3>Enviar ticket</h3>
+    <input id="telefonoModal" placeholder="Ej. 5512345678">
+    <button class="btn-ws" onclick="enviarTicket()">Enviar</button>
+    <button onclick="cerrarModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="app">
+
+<div class="lado-a">
+  <h2>CAJA</h2>
+  <input id="codigo" placeholder="Escanea o escribe código">
+
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>$</th>
+        <th>Cant</th>
+        <th>Total</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="lista"></tbody>
+  </table>
+
+  <div class="producto-img" id="imgBox">
+    <img id="imgProducto">
+  </div>
+</div>
+
+<div class="lado-b">
+  <div class="box">
+    TOTAL
+    <div class="amount">$<span id="total">0.00</span></div>
+  </div>
+
+  <input id="efectivo" placeholder="Efectivo recibido">
+
+  <div class="box cambio">
+    CAMBIO
+    <div class="amount">$<span id="cambio">0.00</span></div>
+  </div>
+
+  <button id="btnFinalizar">FINALIZAR COMPRA</button>
+  <button id="btnWhats" class="btn-ws">📲 ENVIAR TICKET</button>
+  <button id="btnProductos">📦 PRODUCTOS</button>
+  <button id="btnCorte">📊 CORTE DEL DÍA</button>
+  <button id="btnSalir">🔒 Cerrar sesión</button>
+</div>
+
+</div>
+
+<script>
+/* ===== DATOS ===== */
+const productos = JSON.parse(localStorage.getItem(key("productos"))) || {};
+const ventasHoy = JSON.parse(localStorage.getItem(key("ventasHoy"))) || [];
+
+/* ===== ELEMENTOS ===== */
+const codigo = document.getElementById("codigo");
+const lista = document.getElementById("lista");
+const totalSpan = document.getElementById("total");
+const cambioSpan = document.getElementById("cambio");
+const efectivo = document.getElementById("efectivo");
+const imgBox = document.getElementById("imgBox");
+const imgProducto = document.getElementById("imgProducto");
+
+const btnFinalizar = document.getElementById("btnFinalizar");
+const btnWhats = document.getElementById("btnWhats");
+const btnProductos = document.getElementById("btnProductos");
+const btnCorte = document.getElementById("btnCorte");
+const btnSalir = document.getElementById("btnSalir");
+
+const botones=[btnFinalizar,btnWhats,btnProductos,btnCorte,btnSalir];
+
+codigo.focus();
+
+/* ===== ESCÁNER ===== */
+let scanTimer=null;
+codigo.addEventListener("input",()=>{
+  clearTimeout(scanTimer);
+  scanTimer=setTimeout(()=>{
+    if(codigo.value.length>=6){
+      agregar(codigo.value);
+      codigo.value="";
+    }
+  },120);
+});
+
+/* ===== AGREGAR ===== */
+function agregar(txt){
+  txt=txt.toLowerCase();
+  for(const k in productos){
+    if(k.startsWith(txt)){
+      agregarFila(k,productos[k]);
+      if(productos[k].imagen){
+        imgProducto.src=productos[k].imagen;
+        imgBox.style.display="flex";
+      }
+      return;
+    }
+  }
+}
+
+function agregarFila(id,p){
+  let f=[...lista.children].find(r=>r.dataset.id===id);
+  if(!f){
+    f=document.createElement("tr");
+    f.dataset.id=id;
+    f.innerHTML=`
+      <td>${p.nombre}</td>
+      <td>$${p.precio}</td>
+      <td class="cant">1</td>
+      <td class="total">${p.precio.toFixed(2)}</td>
+      <td>
+        <button class="btn-mini" onclick="menos('${id}')">−</button>
+        <button class="btn-mini" onclick="mas('${id}')">+</button>
+        <button class="btn-mini" onclick="eliminar('${id}')">❌</button>
+      </td>`;
+    lista.appendChild(f);
+  }else{
+    mas(id);
+    return;
+  }
+  recalcular();
+}
+
+function mas(id){
+  const f=[...lista.children].find(r=>r.dataset.id===id);
+  const precio=+f.children[1].innerText.replace("$","");
+  const c=f.querySelector(".cant");
+  c.innerText=+c.innerText+1;
+  f.querySelector(".total").innerText=(c.innerText*precio).toFixed(2);
+  recalcular();
+}
+
+function menos(id){
+  const f=[...lista.children].find(r=>r.dataset.id===id);
+  const precio=+f.children[1].innerText.replace("$","");
+  const c=f.querySelector(".cant");
+  if(+c.innerText>1){
+    c.innerText--;
+    f.querySelector(".total").innerText=(c.innerText*precio).toFixed(2);
+  }else{
+    f.remove();
+  }
+  recalcular();
+}
+
+function eliminar(id){
+  const f=[...lista.children].find(r=>r.dataset.id===id);
+  if(f) f.remove();
+  recalcular();
+}
+
+/* ===== TOTALES ===== */
+function recalcular(){
+  let t=0;
+  lista.querySelectorAll(".total").forEach(x=>t+=+x.innerText);
+  totalSpan.innerText=t.toFixed(2);
+  const e=+efectivo.value;
+  cambioSpan.innerText=e>=t?(e-t).toFixed(2):"0.00";
+}
+efectivo.addEventListener("input",recalcular);
+
+/* ===== FINALIZAR ===== */
+btnFinalizar.onclick=()=>{
+  if(!lista.children.length)return;
+  ventasHoy.push({
+    fecha:new Date().toLocaleDateString(),
+    total:+totalSpan.innerText
+  });
+  localStorage.setItem(key("ventasHoy"),JSON.stringify(ventasHoy));
+  lista.innerHTML="";
+  efectivo.value="";
+  imgBox.style.display="none";
+  recalcular();
+  codigo.focus();
+};
+
+/* ===== WHATS ===== */
+btnWhats.onclick=()=>document.getElementById("modalWs").style.display="flex";
+function cerrarModal(){document.getElementById("modalWs").style.display="none";}
+function enviarTicket(){
+  let tel=document.getElementById("telefonoModal").value.replace(/\D/g,"");
+  if(tel.length===10)tel="52"+tel;
+  let msg="🧾 TICKET\n\n";
+  lista.querySelectorAll("tr").forEach(r=>{
+    msg+=`${r.children[0].innerText} x${r.children[2].innerText} $${r.children[3].innerText}\n`;
+  });
+  msg+=`\nTotal: $${totalSpan.innerText}`;
+  window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(msg));
+  cerrarModal();
+}
+
+/* ===== NAVEGACIÓN ===== */
+btnProductos.onclick=()=>location.href="productos.html";
+btnCorte.onclick=()=>location.href="corte.html";
+btnSalir.onclick=()=>{
+  localStorage.removeItem("sesion");
+  localStorage.removeItem("usuarioActual");
+  location.href="login.html";
+};
+
+/* ===== TECLAS ===== */
+let paso=0,botonIndex=0;
+function resaltar(){
+  botones.forEach(b=>b.style.outline="none");
+  botones[botonIndex].style.outline="3px solid #2563eb";
+  botones[botonIndex].focus();
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Shift"){
+    e.preventDefault();
+    if(paso===0){paso=1;efectivo.focus();}
+    else if(paso===1){paso=2;botonIndex=0;resaltar();}
+    else if(paso===2 && botonIndex<botones.length-1){botonIndex++;resaltar();}
+  }
+  if(e.key==="ArrowLeft"){
+    e.preventDefault();
+    if(paso===2 && botonIndex>0){botonIndex--;resaltar();}
+    else if(paso===2){paso=1;efectivo.focus();}
+    else if(paso===1){paso=0;codigo.focus();}
+  }
+  if(e.key==="Enter" && paso===2){
+    botones[botonIndex].click();
+  }
+});
+</script>
+
 </body>
 </html>

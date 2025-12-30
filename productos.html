@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Registro de Productos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#121212;
+  color:#fff;
+  padding:15px;
+}
+h1{text-align:center;}
+input,button{
+  width:100%;
+  padding:12px;
+  margin-bottom:8px;
+  border-radius:8px;
+  border:none;
+}
+input{
+  background:#2a2a2a;
+  color:#fff;
+}
+button{
+  background:#0d6efd;
+  color:#fff;
+  font-size:16px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th,td{
+  padding:6px;
+  text-align:center;
+  border-bottom:1px solid #333;
+}
+img{
+  width:40px;
+  height:40px;
+  object-fit:cover;
+  border-radius:6px;
+}
+.btn-del{
+  background:#dc3545;
+  border:none;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:5px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📦 Registro de Productos</h1>
+
+<input type="text" id="codigo" placeholder="Código de barras">
+<input type="text" id="nombre" placeholder="Nombre del producto">
+<input type="number" id="precio" placeholder="Precio">
+<input type="text" id="imagen" placeholder="URL de la imagen (jpg, png)">
+
+<button onclick="guardarProducto()">💾 Guardar producto</button>
+
+<table>
+<thead>
+<tr>
+<th>Img</th>
+<th>Código</th>
+<th>Producto</th>
+<th>Precio</th>
+<th>X</th>
+</tr>
+</thead>
+<tbody id="lista"></tbody>
+</table>
+
+<button onclick="location.href='index.html'"
+style="margin-top:15px;background:#198754;">
+⬅️ Volver a Caja
+</button>
+
+<script>
+const usuario = localStorage.getItem("usuarioActual");
+let productos = JSON.parse(localStorage.getItem("productos_"+usuario)) || {};
+
+function guardarProducto(){
+  const codigo = document.getElementById("codigo").value.trim();
+  const nombre = document.getElementById("nombre").value.trim();
+  const precio = Number(document.getElementById("precio").value);
+  const imagen = document.getElementById("imagen").value.trim();
+
+  if(!codigo || !nombre || !precio){
+    alert("Completa todos los campos");
+    return;
+  }
+
+  productos[codigo] = { nombre, precio, imagen };
+  
+  localStorage.setItem("productos_"+usuario, JSON.stringify(productos));
+
+
+  document.getElementById("codigo").value="";
+  document.getElementById("nombre").value="";
+  document.getElementById("precio").value="";
+  document.getElementById("imagen").value="";
+
+  mostrarProductos();
+}
+
+function mostrarProductos(){
+  lista.innerHTML="";
+  Object.keys(productos).forEach(codigo=>{
+    const p = productos[codigo];
+    const tr = document.createElement("tr");
+    tr.innerHTML=`
+      <td>${p.imagen ? `<img src="${p.imagen}">` : ""}</td>
+      <td>${codigo}</td>
+      <td>${p.nombre}</td>
+      <td>$${p.precio}</td>
+      <td><button class="btn-del">X</button></td>
+    `;
+    tr.querySelector(".btn-del").onclick=()=>{
+      delete productos[codigo];
+      localStorage.setItem("productos", JSON.stringify(productos));
+      mostrarProductos();
+    };
+    lista.appendChild(tr);
+  });
+}
+
+mostrarProductos();
+</script>
+<script>
+if(localStorage.getItem("sesion") !== "activa"){
+  location.href="login.html";
+}
+</script>
+
+
+</body>
+</html>

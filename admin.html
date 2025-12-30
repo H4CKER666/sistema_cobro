@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel de Administración</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI,Arial;
+  background:#000;
+  color:#fff;
+}
+.container{
+  max-width:900px;
+  margin:40px auto;
+  padding:20px;
+}
+h1{
+  text-align:center;
+  margin-bottom:30px;
+}
+.box{
+  border:2px solid #2563eb;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:20px;
+}
+button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none;
+  background:#dc2626;
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+.user{
+  padding:10px;
+  border-bottom:1px solid #222;
+}
+.small{
+  color:#aaa;
+  font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<script>
+/* ===== VALIDAR SESIÓN ===== */
+if(localStorage.getItem("sesion") !== "activa"){
+  location.href = "login.html";
+}
+
+const usuario = localStorage.getItem("usuarioActual");
+
+/* ===== VALIDAR ADMIN ===== */
+const ADMIN = "admihtml@gmail.com";
+
+if(usuario !== ADMIN){
+  alert("Acceso denegado");
+  location.href = "index.html";
+}
+</script>
+
+<div class="container">
+  <h1>🛠 Panel de Administración</h1>
+
+  <div class="box">
+    <h3>👥 Usuarios registrados</h3>
+    <div id="listaUsuarios"></div>
+  </div>
+
+  <div class="box">
+    <h3>🔒 Sesión</h3>
+    <button onclick="cerrarSesion()">Cerrar sesión</button>
+  </div>
+</div>
+
+<script>
+/* ===== MOSTRAR USUARIOS ===== */
+const usuarios = JSON.parse(localStorage.getItem("usuarios")) || {};
+const lista = document.getElementById("listaUsuarios");
+
+if(Object.keys(usuarios).length === 0){
+  lista.innerHTML = "<div class='small'>No hay usuarios registrados</div>";
+}else{
+  for(const correo in usuarios){
+    const div = document.createElement("div");
+    div.className = "user";
+    div.innerHTML = `
+      <strong>${correo}</strong>
+      <div class="small">Registrado</div>
+    `;
+    lista.appendChild(div);
+  }
+}
+
+/* ===== CERRAR SESIÓN ===== */
+function cerrarSesion(){
+  localStorage.removeItem("sesion");
+  localStorage.removeItem("usuarioActual");
+  location.href = "login.html";
+}
+</script>
+
+</body>
+</html>
